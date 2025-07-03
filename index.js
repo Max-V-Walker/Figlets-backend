@@ -20,6 +20,11 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+function formatDate(dateStr) {
+  const [year, month, day] = dateStr.split("-");
+  return `${month}/${day}/${year}`;
+}
+
 app.get("/api/google-reviews", async (req, res) => {
   const placeId = "ChIJw0wKuxFXnawRuJHrTYdG988";
   const apiKey = process.env.GOOGLE_API_KEY;
@@ -52,12 +57,10 @@ app.get("/api/google-reviews", async (req, res) => {
 app.post("/api/submit-application", (req, res) => {
   const applicationData = req.body;
   console.log("APPLICATION RECEIVED...");
-  console.log("Signature Data:", applicationData.signature.slice(0, 100));
-
 
   const htmlBody = `
     <h1>Figlet's Construction LLC</h1>  
-    <h2>Job Application Received!</h2>
+    <h2>New Job Application Received From ${applicationData.fullName}.</h2>
 
     <br/>
 
@@ -65,7 +68,7 @@ app.post("/api/submit-application", (req, res) => {
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
         <td><strong>Application Date:</strong></td>
-        <td>${applicationData.formDate}</td>
+        <td>${formatDate(applicationData.formDate)}</td>
       </tr> 
       <tr>
         <td><strong>Applicant Name:</strong></td>
@@ -89,7 +92,7 @@ app.post("/api/submit-application", (req, res) => {
       </tr> 
       <tr>
         <td><strong>Date Of Birth:</strong></td>
-        <td>${applicationData.dob}</td>
+        <td>${formatDate(applicationData.dob)}</td>
       </tr> 
       <tr>
         <td><strong>Age:</strong></td>
@@ -169,7 +172,7 @@ app.post("/api/submit-application", (req, res) => {
       </tr> 
       <tr>
         <td><strong>Available start date?:</strong></td>
-        <td>${applicationData.startDate}</td>
+        <td>${formatDate(applicationData.startDate)}</td>
       </tr> 
       <tr>
         <td><strong>Do you have reliable transportation to and from work?:</strong></td>
@@ -200,7 +203,7 @@ app.post("/api/submit-application", (req, res) => {
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
         <td><strong>Please list below the skills/qualifications you possess for the position for which you are applying:</strong></td>
-        <td>${applicationData.jobSkillsQualifications}</td>
+        <td>${applicationData.jobSkillsQualification}</td>
       </tr> 
     </table>
 
@@ -309,7 +312,9 @@ app.post("/api/submit-application", (req, res) => {
       </tr> 
       <tr>
         <td><strong>Dates Employed:</strong></td>
-        <td>${applicationData.employmentStart}-${applicationData.employmentEnd}</td>
+        <td>${formatDate(applicationData.employmentStart)} - ${formatDate(
+    applicationData.employmentEnd
+  )}</td>
       </tr> 
       <tr>
         <td><strong>Reason for leaving:</strong></td>
@@ -330,7 +335,7 @@ app.post("/api/submit-application", (req, res) => {
         <td><strong>Reference Phone Number:</strong></td>
         <td>${applicationData.reference1Phone}</td>
       </tr> 
-      <tr>
+      <tr style={{margin-bottom: 25px}}>
         <td><strong>Reference Relationship:</strong></td>
         <td>${applicationData.reference1Relationship}</td>
       </tr> 
@@ -358,15 +363,15 @@ app.post("/api/submit-application", (req, res) => {
         <td>${applicationData.certificationAgreed}</td>
       </tr> 
       <tr>
-        <td><strong>Date:</strong></td>
-        <td>${applicationData.signatureDate}</td>
+        <td><strong>Certification Date:</strong></td>
+        <td>${formatDate(applicationData.signatureDate)}</td>
       </tr> 
       <tr>
         <td><strong>Signature:</strong></td>
       </tr> 
       <tr>
         <td>
-          <img src="${applicationData.signature}" alt="Signature Image" style="max-width: 300px; height: auto"/>
+          <img src="cid:signatureImage" alt="Signature Image" style="max-width: 300px; height: auto"/>
         </td>
       </tr> 
     </table>
@@ -376,17 +381,31 @@ app.post("/api/submit-application", (req, res) => {
     from: process.env.EMAIL_USER,
     // to: "figlets.const@gmail.com",
     to: "maxwalker23@gmail.com",
-    subject: "New Job Application Submitted From Figlet's Website",
+    subject: `New Application from ${
+      applicationData.fullName
+    } - ${new Date().toLocaleString()}`,
     html: htmlBody,
+    attachments: [
+      {
+        filename: "signature.png",
+        content: applicationData.signature.replace(
+          /^data:image\/\w+;base64,/,
+          ""
+        ),
+        // ^  strips base64 header
+        encoding: "base64",
+        cid: "signatureImage", // same as used in src="cid:signatureImage"
+      },
+    ],
   };
 
   transporter.sendMail(mailOptions, (error, info) => {
-    if(error) {
+    if (error) {
       console.log("EMAIL ERROR!!:", error);
-      return res.status(500).json({message: "Email failed to send"});
+      return res.status(500).json({ message: "Email failed to send" });
     }
     console.log("EMAIL SENT SUCCESSFULLY!!:", info.response);
-    res.status(200).json({message: "Application received and emailed"})
+    res.status(200).json({ message: "Application received and emailed" });
   });
 });
 
