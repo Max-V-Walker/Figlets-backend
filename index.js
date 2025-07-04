@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const nodemailer = require("nodemailer");
+const puppeteer = require("puppeteer");
 
 require("dotenv").config();
 
@@ -10,20 +11,6 @@ const PORT = process.env.PORT || 5050;
 app.use(cors());
 app.use(express.json());
 app.use(express.json({ limit: "10mb" }));
-
-// Below transport created to "send" the email app.
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-function formatDate(dateStr) {
-  const [year, month, day] = dateStr.split("-");
-  return `${month}/${day}/${year}`;
-}
 
 app.get("/api/google-reviews", async (req, res) => {
   const placeId = "ChIJw0wKuxFXnawRuJHrTYdG988";
@@ -54,12 +41,18 @@ app.get("/api/google-reviews", async (req, res) => {
   }
 });
 
-app.post("/api/submit-application", (req, res) => {
+app.post("/api/submit-application", async (req, res) => {
   const applicationData = req.body;
   console.log("APPLICATION RECEIVED...");
 
+  function formatDate(dateStr) {
+    const [year, month, day] = dateStr.split("-");
+    return `${month}/${day}/${year}`;
+  }
+
   const htmlBody = `
-    <h1>Figlet's Construction LLC</h1>  
+  <div style="margin: 0 auto; padding: 20px;">
+    <h1 style="margin-bottom: -10px">Figlet's Construction LLC</h1>  
     <h2>New Job Application Received From ${applicationData.fullName}.</h2>
 
     <br/>
@@ -67,77 +60,113 @@ app.post("/api/submit-application", (req, res) => {
     <h3 style="text-decoration: underline">Applicant Information</h3>
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
-        <td><strong>Application Date:</strong></td>
-        <td>${formatDate(applicationData.formDate)}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Application Date:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${formatDate(
+          applicationData.formDate
+        )}</td>
       </tr> 
       <tr>
-        <td><strong>Applicant Name:</strong></td>
-        <td>${applicationData.fullName}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Applicant Name:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.fullName
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Social Security Number/TIN #:</strong></td>
-        <td>${applicationData.ssn}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Social Security Number/TIN #:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.ssn
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Address:</strong></td>
-        <td>${applicationData.address}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Address:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.address
+        }</td>
       </tr> 
       <tr>
-        <td><strong>City, State, and Zip Code:</strong></td>
-        <td>${applicationData.cityStateZip}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>City, State, and Zip Code:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.cityStateZip
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Telephone:</strong></td>
-        <td>${applicationData.phone}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Telephone:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.phone
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Date Of Birth:</strong></td>
-        <td>${formatDate(applicationData.dob)}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Date Of Birth:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${formatDate(
+          applicationData.dob
+        )}</td>
       </tr> 
       <tr>
-        <td><strong>Age:</strong></td>
-        <td>${applicationData.age}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Age:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.age
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Smoker?:</strong></td>
-        <td>${applicationData.smoker}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Smoker?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.smoker
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Are you a US citizen or approved to work in the United States?:</strong></td>
-        <td>${applicationData.citizenship}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Are you a US citizen or approved to work in the United States?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.citizenship
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Can you provide proof of citizenship or legal status?:</strong></td>
-        <td>${applicationData.proofOfCitizenship}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Can you provide proof of citizenship or legal status?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.proofOfCitizenship
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Will you consent to a mandatory controlled substance test?:</strong></td>
-        <td>${applicationData.drugTest}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Will you consent to a mandatory controlled substance test?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.drugTest
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Do you have any condition(s) which would require job accommodations?:</strong></td>
-        <td>${applicationData.accommodations}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Do you have any condition(s) which would require job accommodations?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.accommodations
+        }</td>
       </tr> 
       <tr>
-        <td><strong>If yes, please describe accommodations required:</strong></td>
-        <td>${applicationData.accommodationsExplain || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>If yes, please describe accommodations required:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.accommodationsExplain || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Have you ever been convicted of a criminal offense (felony or misdemeanor)?:</strong></td>
-        <td>${applicationData.criminalHistory}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Have you ever been convicted of a criminal offense (felony or misdemeanor)?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.criminalHistory
+        }</td>
       </tr> 
       <tr>
-        <td><strong>If yes, please state the nature of the crime(s), when and where convicted, and
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>If yes, please state the nature of the crime(s), when and where convicted, and
           disposition of the case:</strong></td>
-        <td>${applicationData.criminalHistoryExplain || "n/a"}</td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.criminalHistoryExplain || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Do you consent to a background check?:</strong></td>
-        <td>${applicationData.backgroundCheck}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Do you consent to a background check?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.backgroundCheck
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Do you have any medical conditions past or present? Please specify:</strong></td>
-        <td>${applicationData.medicalConditions}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Do you have any medical conditions past or present? Please specify:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.medicalConditions
+        }</td>
       </tr> 
     </table>
 
@@ -147,52 +176,76 @@ app.post("/api/submit-application", (req, res) => {
     <h3 style="text-decoration: underline">Employment Position</h3>
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
-        <td><strong>Position(s) Applying For:</strong></td>
-        <td>${applicationData.positionApplyingFor}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Position(s) Applying For:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.positionApplyingFor
+        }</td>
       </tr> 
       <tr>
-        <td><strong>How did you hear about us?:</strong></td>
-        <td>${applicationData.heardFrom}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>How did you hear about us?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.heardFrom
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Are you able to work Monday-Friday:</strong></td>
-        <td>${applicationData.monThroughFri}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Are you able to work Monday-Friday:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.monThroughFri
+        }</td>
       </tr> 
       <tr>
-        <td><strong>If needed, are you able to work overtime?:</strong></td>
-        <td>${applicationData.overtime}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>If needed, are you able to work overtime?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.overtime
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Are you able to work odd and extensive hours?:</strong></td>
-        <td>${applicationData.oddExtensiveHours}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Are you able to work odd and extensive hours?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.oddExtensiveHours
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Are you able to work weekends?:</strong></td>
-        <td>${applicationData.weekends}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Are you able to work weekends?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.weekends
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Available start date?:</strong></td>
-        <td>${formatDate(applicationData.startDate)}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Available start date?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${formatDate(
+          applicationData.startDate
+        )}</td>
       </tr> 
       <tr>
-        <td><strong>Do you have reliable transportation to and from work?:</strong></td>
-        <td>${applicationData.reliableTransportation}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Do you have reliable transportation to and from work?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.reliableTransportation
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Are you able to lift up to 80lbs alone?:</strong></td>
-        <td>${applicationData.liftWeight}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Are you able to lift up to 80lbs alone?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.liftWeight
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Have any machinery experience?:</strong></td>
-        <td>${applicationData.machineryExperience}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Have any machinery experience?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.machineryExperience
+        }</td>
       </tr> 
       <tr>
-        <td><strong>List with years of machinery experience:</strong></td>
-        <td>${applicationData.yearsWithMachineryExperience}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>List with years of machinery experience:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.yearsWithMachineryExperience
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Are you able to wear face masks for long periods of time, which may exceed up to 4 hours?:</strong></td>
-        <td>${applicationData.faceMasks}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Are you able to wear face masks for long periods of time, which may exceed up to 4 hours?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.faceMasks
+        }</td>
       </tr> 
     </table>
 
@@ -202,8 +255,10 @@ app.post("/api/submit-application", (req, res) => {
     <h3 style="text-decoration: underline">Job Skills/Qualifications</h3>
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
-        <td><strong>Please list below the skills/qualifications you possess for the position for which you are applying:</strong></td>
-        <td>${applicationData.jobSkillsQualification}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Please list below the skills/qualifications you possess for the position for which you are applying:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.jobSkillsQualification
+        }</td>
       </tr> 
     </table>
 
@@ -213,52 +268,76 @@ app.post("/api/submit-application", (req, res) => {
     <h3 style="text-decoration: underline">Education and Training</h3>
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
-        <td><strong>Highschool name?:</strong></td>
-        <td>${applicationData.highschoolName || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Highschool name?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.highschoolName || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Highschool location (city/state):</strong></td>
-        <td>${applicationData.highschoolLocation || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Highschool location (city/state):</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.highschoolLocation || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Highschool year graduated?:</strong></td>
-        <td>${applicationData.highschoolYearGraduated || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Highschool year graduated?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.highschoolYearGraduated || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Highschool degree earned?:</strong></td>
-        <td>${applicationData.highSchoolDegreeEarned || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Highschool degree earned?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.highSchoolDegreeEarned || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>College name?:</strong></td>
-        <td>${applicationData.collegeName || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>College name?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.collegeName || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>College location (city/state):</strong></td>
-        <td>${applicationData.collegeLocation || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>College location (city/state):</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.collegeLocation || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>College year graduated?:</strong></td>
-        <td>${applicationData.collegeYearGraduated || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>College year graduated?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.collegeYearGraduated || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>College degree earned?:</strong></td>
-        <td>${applicationData.collegeDegreeEarned || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>College degree earned?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.collegeDegreeEarned || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Vocational school/Specialized training name?:</strong></td>
-        <td>${applicationData.specializedtrainingName || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Vocational school/Specialized training name?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.specializedtrainingName || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Vocational school/Specialized training location (city/state):</strong></td>
-        <td>${applicationData.specializedtrainingLocation || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Vocational school/Specialized training location (city/state):</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.specializedtrainingLocation || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Vocational school/Specialized training year graduated?:</strong></td>
-        <td>${applicationData.specializedtrainingYearGraduated || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Vocational school/Specialized training year graduated?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.specializedtrainingYearGraduated || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Vocational school/Specialized training degree earned?:</strong></td>
-        <td>${applicationData.specializedtrainingDegreeEarned || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Vocational school/Specialized training degree earned?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.specializedtrainingDegreeEarned || "n/a"
+        }</td>
       </tr> 
     </table>
 
@@ -268,20 +347,28 @@ app.post("/api/submit-application", (req, res) => {
     <h3 style="text-decoration: underline">Military</h3>
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
-        <td><strong>Are you a member of the Armed Services?:</strong></td>
-        <td>${applicationData.memberOfArmedService}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Are you a member of the Armed Services?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.memberOfArmedService
+        }</td>
       </tr> 
       <tr>
-        <td><strong>What branch of the military did you enlist?:</strong></td>
-        <td>${applicationData.militaryBranch || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>What branch of the military did you enlist?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.militaryBranch || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Are you still active?:</strong></td>
-        <td>${applicationData.militaryStillActive || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Are you still active?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.militaryStillActive || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>How many years did you serve?:</strong></td>
-        <td>${applicationData.MilitaryYearsServed || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>How many years did you serve?:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.MilitaryYearsServed || "n/a"
+        }</td>
       </tr> 
     </table>
 
@@ -291,34 +378,46 @@ app.post("/api/submit-application", (req, res) => {
     <h3 style="text-decoration: underline">Previous Employment</h3>
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
-        <td><strong>Employer Name:</strong></td>
-        <td>${applicationData.employerName}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Employer Name:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.employerName
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Job Title:</strong></td>
-        <td>${applicationData.jobTitle}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Job Title:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.jobTitle
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Supervisor Name:</strong></td>
-        <td>${applicationData.supervisorName}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Supervisor Name:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.supervisorName
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Employer Address:</strong></td>
-        <td>${applicationData.employerAddress}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Employer Address:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.employerAddress
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Employer Telephone:</strong></td>
-        <td>${applicationData.employerPhone}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Employer Telephone:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.employerPhone
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Dates Employed:</strong></td>
-        <td>${formatDate(applicationData.employmentStart)} - ${formatDate(
-    applicationData.employmentEnd
-  )}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Dates Employed:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${formatDate(
+          applicationData.employmentStart
+        )} - ${formatDate(applicationData.employmentEnd)}</td>
       </tr> 
       <tr>
-        <td><strong>Reason for leaving:</strong></td>
-        <td>${applicationData.reasonForLeaving}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Reason for leaving:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.reasonForLeaving
+        }</td>
       </tr> 
     </table>
 
@@ -328,28 +427,40 @@ app.post("/api/submit-application", (req, res) => {
     <h3 style="text-decoration: underline">References</h3>
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
-        <td><strong>Reference Name:</strong></td>
-        <td>${applicationData.reference1Name}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Reference Name:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.reference1Name
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Reference Phone Number:</strong></td>
-        <td>${applicationData.reference1Phone}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Reference Phone Number:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.reference1Phone
+        }</td>
       </tr> 
       <tr style={{margin-bottom: 25px}}>
-        <td><strong>Reference Relationship:</strong></td>
-        <td>${applicationData.reference1Relationship}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Reference Relationship:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.reference1Relationship
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Reference Name:</strong></td>
-        <td>${applicationData.reference2Name || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Reference Name:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.reference2Name || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Reference Phone Number:</strong></td>
-        <td>${applicationData.reference2Phone || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Reference Phone Number:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.reference2Phone || "n/a"
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Reference Relationship:</strong></td>
-        <td>${applicationData.reference2Relationship || "n/a"}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Reference Relationship:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.reference2Relationship || "n/a"
+        }</td>
       </tr> 
     </table>
 
@@ -359,23 +470,52 @@ app.post("/api/submit-application", (req, res) => {
     <h3 style="text-decoration: underline">Certification</h3>
     <table border="1" cellpadding="5" cellspacing="5" style="width: 100%; max-width: 600px">
       <tr>
-        <td><strong>I have carefully read the above certification and I understand and agree to its terms:</strong></td>
-        <td>${applicationData.certificationAgreed}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>I have carefully read the above certification and I understand and agree to its terms:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.certificationAgreed
+        }</td>
       </tr> 
       <tr>
-        <td><strong>Certification Date:</strong></td>
-        <td>${formatDate(applicationData.signatureDate)}</td>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Certification Date:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${formatDate(
+          applicationData.signatureDate
+        )}</td>
       </tr> 
       <tr>
-        <td><strong>Signature:</strong></td>
-      </tr> 
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>Signature:</strong></td>
+      </tr>
+
       <tr>
         <td>
-          <img src="cid:signatureImage" alt="Signature Image" style="max-width: 300px; height: auto"/>
+          <img src="{{SIGNATURE_SRC}}" alt="Signature Image" style="max-width: 325px; height: auto"/>
         </td>
       </tr> 
     </table>
+  </div>
   `;
+
+  const base64Signature = applicationData.signature;
+  const htmlForPDF = htmlBody.replace("{{SIGNATURE_SRC}}", base64Signature);
+  const htmlForEmail = htmlBody.replace(
+    "{{SIGNATURE_SRC}}",
+    "cid:signatureImage"
+  );
+
+  // Launch puppeteer to render HTML as PDF
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.setContent(htmlForPDF);
+  const pdfBuffer = await page.pdf({ format: "A4" });
+  await browser.close();
+
+  // Below transport created to "send" the email app.
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -384,7 +524,7 @@ app.post("/api/submit-application", (req, res) => {
     subject: `New Application from ${
       applicationData.fullName
     } - ${new Date().toLocaleString()}`,
-    html: htmlBody,
+    html: htmlForEmail,
     attachments: [
       {
         filename: "signature.png",
@@ -394,7 +534,12 @@ app.post("/api/submit-application", (req, res) => {
         ),
         // ^  strips base64 header
         encoding: "base64",
-        cid: "signatureImage", // same as used in src="cid:signatureImage"
+        cid: "signatureImage",
+      },
+      {
+        filename: `${applicationData.fullName.split(" ").join("")}Application`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
       },
     ],
   };
