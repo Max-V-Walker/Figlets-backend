@@ -167,6 +167,13 @@ app.post("/api/submit-application", async (req, res) => {
         <td style="width: 65%; word-break: break-word;">${
           applicationData.medicalConditions
         }</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; width: 35%; background-color: #f9f9f9; vertical-align: top;"><strong>If yes, please state the nature of the crime(s), when and where convicted, and
+          disposition of the case:</strong></td>
+        <td style="width: 65%; word-break: break-word;">${
+          applicationData.medicalConditionsExplain || "n/a"
+        }</td>
       </tr> 
     </table>
 
