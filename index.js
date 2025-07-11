@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const nodemailer = require("nodemailer");
-const puppeteer = require("puppeteer");
+const chromium = require("@sparticuz/chromium");
+const puppeteer = require("puppeteer-core");
 
 require("dotenv").config();
 
@@ -565,8 +566,10 @@ app.post("/api/submit-application", async (req, res) => {
 
   // Launch puppeteer to render HTML as PDF
   const browser = await puppeteer.launch({
-    args: ["--no-sandbox"],
-    headless: true,
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
   });
   const page = await browser.newPage();
   await page.setContent(htmlForPDF);
