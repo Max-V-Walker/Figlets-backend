@@ -564,7 +564,10 @@ app.post("/api/submit-application", async (req, res) => {
   );
 
   // Launch puppeteer to render HTML as PDF
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    args: ["--no-sandbox"],
+    headless: true,
+  });
   const page = await browser.newPage();
   await page.setContent(htmlForPDF);
   const pdfBuffer = await page.pdf({ format: "A4" });
