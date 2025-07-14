@@ -46,7 +46,7 @@ app.get("/api/google-reviews", async (req, res) => {
 
 app.post("/api/submit-application", async (req, res) => {
   const applicationData = req.body;
-  console.log("Application received on backend");
+  console.log("Application received on backend..");
 
   function formatDate(dateStr) {
     const [year, month, day] = dateStr.split("-");
@@ -567,34 +567,45 @@ app.post("/api/submit-application", async (req, res) => {
       "cid:signatureImage"
     );
 
-    // Launch puppeteer to render HTML as 
-    console.log("launching browser..")
+    // Launch puppeteer to render HTML as
+    console.log("launching browser..");
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: (await chromium.executablePath()) || '/usr/bin/chromium-browser',
+      executablePath:
+        (await chromium.executablePath()) || "/usr/bin/chromium-browser",
       headless: chromium.headless,
     });
 
-    console.log("Opening new page..")
+    console.log("Opening new page..");
     const page = await browser.newPage();
-    console.log("Setting content..")
-    await page.setContent(htmlForPDF);
+    console.log("Setting content..");
+    await page.setContent(htmlForPDF, {waitUntil: "networkidle0"});
     // const pdfBuffer = await page.pdf({ format: "A4" });
-    
+
     let pdfBuffer;
     console.log("Generating PDF..");
     try {
       pdfBuffer = await page.pdf({ format: "A4", timeout: 30000 }); // 30s timeout
-      console.log("PDF generated");
+      console.log("PDF generated..");
     } catch (err) {
       console.error("Error generating PDF:", err);
       await browser.close();
       return res.status(500).json({ message: "PDF generation failed." });
     }
-    console.log("Closing browser")
-    await browser.close();
-    console.log("PDF generated and browser closed")
+    console.log("Closing browser..");
+    // await browser.close();
+    const closeTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("browser.close() timed out")), 10000)
+    );
+
+    try {
+      await Promise.race([browser.close(), closeTimeout]);
+      console.log("PDF generated and browser closed!");
+    } catch (err) {
+      console.error("Failed to close browser:", err);
+    }
+    // console.log("PDF generated and browser closed!");
 
     // Below transport created to "send" the email app.
     const transporter = nodemailer.createTransport({
