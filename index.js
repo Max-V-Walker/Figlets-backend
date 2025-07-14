@@ -15,6 +15,9 @@ app.use(
 app.use(express.json());
 app.use(express.json({ limit: "10mb" }));
 
+// ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+// ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+
 app.get("/api/google-reviews", async (req, res) => {
   const placeId = "ChIJw0wKuxFXnawRuJHrTYdG988";
   const apiKey = process.env.GOOGLE_API_KEY;
@@ -44,9 +47,12 @@ app.get("/api/google-reviews", async (req, res) => {
   }
 });
 
+// ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+// ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+
 app.post("/api/submit-application", async (req, res) => {
   const applicationData = req.body;
-  console.log("Application received on backend..");
+  console.log("📥 Application received on backend..");
 
   function formatDate(dateStr) {
     const [year, month, day] = dateStr.split("-");
@@ -440,43 +446,43 @@ app.post("/api/submit-application", async (req, res) => {
       <tr>
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Employer 2 Name:</strong></td>
         <td style="width: 50%; word-break: break-word;">${
-          applicationData.employer2Name
+          applicationData.employer2Name || "n/a"
         }</td>
       </tr> 
       <tr>
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Job 2 Title:</strong></td>
         <td style="width: 50%; word-break: break-word;">${
-          applicationData.job2Title
+          applicationData.job2Title || "n/a"
         }</td>
       </tr> 
       <tr>
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Supervisor 2 Name:</strong></td>
         <td style="width: 50%; word-break: break-word;">${
-          applicationData.supervisor2Name
+          applicationData.supervisor2Name || "n/a"
         }</td>
       </tr> 
       <tr>
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Employer 2 Address:</strong></td>
         <td style="width: 50%; word-break: break-word;">${
-          applicationData.employer2Address
+          applicationData.employer2Address || "n/a"
         }</td>
       </tr> 
       <tr>
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Employer 2 Telephone:</strong></td>
         <td style="width: 50%; word-break: break-word;">${
-          applicationData.employer2Phone
+          applicationData.employer2Phone || "n/a"
         }</td>
       </tr> 
       <tr>
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Dates Employed:</strong></td>
         <td style="width: 50%; word-break: break-word;">${formatDate(
           applicationData.employment2Start
-        )} - ${formatDate(applicationData.employment2End)}</td>
+        )} - ${formatDate(applicationData.employment2End)} || "n/a"</td>
       </tr> 
       <tr>
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Reason for leaving:</strong></td>
         <td style="width: 50%; word-break: break-word;">${
-          applicationData.reasonForLeaving2
+          applicationData.reasonForLeaving2 || "n/a"
         }</td>
       </tr> 
     </table>
@@ -560,6 +566,7 @@ app.post("/api/submit-application", async (req, res) => {
   `;
 
   try {
+    // Replace signature placeholder in email and PDF HTML
     const base64Signature = applicationData.signature;
     const htmlForPDF = htmlBody.replace("{{SIGNATURE_SRC}}", base64Signature);
     const htmlForEmail = htmlBody.replace(
@@ -568,7 +575,7 @@ app.post("/api/submit-application", async (req, res) => {
     );
 
     // Launch puppeteer to render HTML as
-    console.log("launching browser..");
+    console.log("🚀 Launching browser...");
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
@@ -577,37 +584,33 @@ app.post("/api/submit-application", async (req, res) => {
       headless: chromium.headless,
     });
 
-    console.log("Opening new page..");
     const page = await browser.newPage();
-    console.log("Setting content..");
-    await page.setContent(htmlForPDF, {waitUntil: "networkidle0"});
-    // const pdfBuffer = await page.pdf({ format: "A4" });
+    console.log("🖥️ Opening new page and setting content...");
+    await page.setContent(htmlForPDF, { waitUntil: "networkidle0" });
 
     let pdfBuffer;
-    console.log("Generating PDF..");
     try {
+      console.log("📝 Generating PDF...");
       pdfBuffer = await page.pdf({ format: "A4", timeout: 30000 }); // 30s timeout
-      console.log("PDF generated..");
+      console.log("✅ PDF generated.");
     } catch (err) {
-      console.error("Error generating PDF:", err);
+      console.error("❌ PDF generation error:", err);
       await browser.close();
       return res.status(500).json({ message: "PDF generation failed." });
     }
-    console.log("Closing browser..");
-    // await browser.close();
+
+    console.log("🧹 Closing browser...");
     const closeTimeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("browser.close() timed out")), 10000)
     );
-
     try {
       await Promise.race([browser.close(), closeTimeout]);
-      console.log("PDF generated and browser closed!");
+      console.log("✅ Browser closed.");
     } catch (err) {
-      console.error("Failed to close browser:", err);
+      console.warn("⚠️ Failed to close browser:", err);
     }
-    // console.log("PDF generated and browser closed!");
 
-    // Below transport created to "send" the email app.
+    // Configure email
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -618,8 +621,7 @@ app.post("/api/submit-application", async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      // to: "figlets.const@gmail.com",
-      to: "maxwalker23@gmail.com",
+      to: ["maxwalker23@gmail.com", "figlets.const@gmail.com"],
       subject: `New Application from ${
         applicationData.fullName
       } - ${new Date().toLocaleString()}`,
@@ -645,20 +647,23 @@ app.post("/api/submit-application", async (req, res) => {
       ],
     };
 
+    // Send email
     transporter.sendMail(mailOptions, (error, info) => {
-      console.log("Sending email..");
       if (error) {
-        console.log("EMAIL ERROR!!:", error);
+        console.error("❌ Email send error:", error);
         return res.status(500).json({ message: "Email failed to send" });
       }
-      console.log("EMAIL SENT SUCCESSFULLY!!:", info.response);
+      console.log("📧 Email sent:", info.response);
       res.status(200).json({ message: "Application received and emailed" });
     });
   } catch (err) {
-    console.error("BACKEND ERROR!!: ", err);
-    res.status(500).json({ error: "INTERNAL SERVER ERROR" });
+    console.error("🔥 Uncaught backend error:", err);
+    return res.status(500).json({ error: "INTERNAL SERVER ERROR" });
   }
 });
+
+// ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+// ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
 
 app.listen(PORT, () => {
   console.log(`Live on port ${PORT}`);
