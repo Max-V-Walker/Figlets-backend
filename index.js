@@ -9,7 +9,9 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 5050;
 
-app.use(cors());
+app.use(
+  cors({ origin: "https://figlets-frontend.netlify.app", methods: ["POST"] })
+);
 app.use(express.json());
 app.use(express.json({ limit: "10mb" }));
 
@@ -46,15 +48,14 @@ app.post("/api/submit-application", async (req, res) => {
   const applicationData = req.body;
   console.log("Application received on backend");
 
-  try {
-    function formatDate(dateStr) {
-      const [year, month, day] = dateStr.split("-");
-      return `${month}/${day}/${year}`;
-    }
+  function formatDate(dateStr) {
+    const [year, month, day] = dateStr.split("-");
+    return `${month}/${day}/${year}`;
+  }
 
-    const htmlBody = `
+  const htmlBody = `
   <div style="margin: 0 auto; padding: 5px;">
-    <h1 style="margin-bottom: -10px">Figlet's Construction LLC</h1>  
+  <h1 style="margin-bottom: -10px">Figlet's Construction LLC</h1>  
     <h2>New Job Application Received From ${applicationData.fullName}.</h2>
 
     <br/>
@@ -558,6 +559,7 @@ app.post("/api/submit-application", async (req, res) => {
   </div>
   `;
 
+  try {
     const base64Signature = applicationData.signature;
     const htmlForPDF = htmlBody.replace("{{SIGNATURE_SRC}}", base64Signature);
     const htmlForEmail = htmlBody.replace(
@@ -569,11 +571,12 @@ app.post("/api/submit-application", async (req, res) => {
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: chromium.executablePath,
       headless: chromium.headless,
     });
     const page = await browser.newPage();
     await page.setContent(htmlForPDF);
+    console.log("Generating PDF..")
     const pdfBuffer = await page.pdf({ format: "A4" });
     await browser.close();
 
@@ -616,6 +619,7 @@ app.post("/api/submit-application", async (req, res) => {
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
+      console.log("Sending email..")
       if (error) {
         console.log("EMAIL ERROR!!:", error);
         return res.status(500).json({ message: "Email failed to send" });
