@@ -44,14 +44,15 @@ app.get("/api/google-reviews", async (req, res) => {
 
 app.post("/api/submit-application", async (req, res) => {
   const applicationData = req.body;
-  console.log("APPLICATION RECEIVED...");
+  console.log("Application received on backend");
 
-  function formatDate(dateStr) {
-    const [year, month, day] = dateStr.split("-");
-    return `${month}/${day}/${year}`;
-  }
+  try {
+    function formatDate(dateStr) {
+      const [year, month, day] = dateStr.split("-");
+      return `${month}/${day}/${year}`;
+    }
 
-  const htmlBody = `
+    const htmlBody = `
   <div style="margin: 0 auto; padding: 5px;">
     <h1 style="margin-bottom: -10px">Figlet's Construction LLC</h1>  
     <h2>New Job Application Received From ${applicationData.fullName}.</h2>
@@ -557,69 +558,75 @@ app.post("/api/submit-application", async (req, res) => {
   </div>
   `;
 
-  const base64Signature = applicationData.signature;
-  const htmlForPDF = htmlBody.replace("{{SIGNATURE_SRC}}", base64Signature);
-  const htmlForEmail = htmlBody.replace(
-    "{{SIGNATURE_SRC}}",
-    "cid:signatureImage"
-  );
+    const base64Signature = applicationData.signature;
+    const htmlForPDF = htmlBody.replace("{{SIGNATURE_SRC}}", base64Signature);
+    const htmlForEmail = htmlBody.replace(
+      "{{SIGNATURE_SRC}}",
+      "cid:signatureImage"
+    );
 
-  // Launch puppeteer to render HTML as PDF
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
-  });
-  const page = await browser.newPage();
-  await page.setContent(htmlForPDF);
-  const pdfBuffer = await page.pdf({ format: "A4" });
-  await browser.close();
+    // Launch puppeteer to render HTML as PDF
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+    const page = await browser.newPage();
+    await page.setContent(htmlForPDF);
+    const pdfBuffer = await page.pdf({ format: "A4" });
+    await browser.close();
 
-  // Below transport created to "send" the email app.
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    // to: "figlets.const@gmail.com",
-    to: "maxwalker23@gmail.com",
-    subject: `New Application from ${
-      applicationData.fullName
-    } - ${new Date().toLocaleString()}`,
-    html: htmlForEmail,
-    attachments: [
-      {
-        filename: "signature.png",
-        content: applicationData.signature.replace(
-          /^data:image\/\w+;base64,/,
-          ""
-        ),
-        // ^  strips base64 header
-        encoding: "base64",
-        cid: "signatureImage",
+    // Below transport created to "send" the email app.
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
-      {
-        filename: `${applicationData.fullName.split(" ").join("")}Application`,
-        content: pdfBuffer,
-        contentType: "application/pdf",
-      },
-    ],
-  };
+    });
 
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.log("EMAIL ERROR!!:", error);
-      return res.status(500).json({ message: "Email failed to send" });
-    }
-    console.log("EMAIL SENT SUCCESSFULLY!!:", info.response);
-    res.status(200).json({ message: "Application received and emailed" });
-  });
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      // to: "figlets.const@gmail.com",
+      to: "maxwalker23@gmail.com",
+      subject: `New Application from ${
+        applicationData.fullName
+      } - ${new Date().toLocaleString()}`,
+      html: htmlForEmail,
+      attachments: [
+        {
+          filename: "signature.png",
+          content: applicationData.signature.replace(
+            /^data:image\/\w+;base64,/,
+            ""
+          ),
+          // ^  strips base64 header
+          encoding: "base64",
+          cid: "signatureImage",
+        },
+        {
+          filename: `${applicationData.fullName
+            .split(" ")
+            .join("")}Application`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log("EMAIL ERROR!!:", error);
+        return res.status(500).json({ message: "Email failed to send" });
+      }
+      console.log("EMAIL SENT SUCCESSFULLY!!:", info.response);
+      res.status(200).json({ message: "Application received and emailed" });
+    });
+  } catch (err) {
+    console.error("BACKEND ERROR!!: ", err);
+    res.status(500).json({ error: "INTERNAL SERVER ERROR" });
+  }
 });
 
 app.listen(PORT, () => {
