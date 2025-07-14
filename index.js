@@ -567,18 +567,34 @@ app.post("/api/submit-application", async (req, res) => {
       "cid:signatureImage"
     );
 
-    // Launch puppeteer to render HTML as PDF
+    // Launch puppeteer to render HTML as 
+    console.log("launching browser..")
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: (await chromium.executablePath()) || '/usr/bin/chromium-browser',
       headless: chromium.headless,
     });
+
+    console.log("Opening new page..")
     const page = await browser.newPage();
+    console.log("Setting content..")
     await page.setContent(htmlForPDF);
-    console.log("Generating PDF..")
-    const pdfBuffer = await page.pdf({ format: "A4" });
+    // const pdfBuffer = await page.pdf({ format: "A4" });
+    
+    let pdfBuffer;
+    console.log("Generating PDF..");
+    try {
+      pdfBuffer = await page.pdf({ format: "A4", timeout: 30000 }); // 30s timeout
+      console.log("PDF generated");
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      await browser.close();
+      return res.status(500).json({ message: "PDF generation failed." });
+    }
+    console.log("Closing browser")
     await browser.close();
+    console.log("PDF generated and browser closed")
 
     // Below transport created to "send" the email app.
     const transporter = nodemailer.createTransport({
@@ -619,7 +635,7 @@ app.post("/api/submit-application", async (req, res) => {
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
-      console.log("Sending email..")
+      console.log("Sending email..");
       if (error) {
         console.log("EMAIL ERROR!!:", error);
         return res.status(500).json({ message: "Email failed to send" });
