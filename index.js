@@ -477,7 +477,7 @@ app.post("/api/submit-application", async (req, res) => {
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Dates Employed:</strong></td>
         <td style="width: 50%; word-break: break-word;">${formatDate(
           applicationData.employment2Start
-        )} - ${formatDate(applicationData.employment2End)} || "n/a"</td>
+        ) || "n/a"} - ${applicationData.employment2Start ? formatDate(applicationData.employment2End) : ""}</td>
       </tr> 
       <tr>
         <td style="font-weight: bold; width: 50%; background-color: #f9f9f9; vertical-align: top;"><strong>Reason for leaving:</strong></td>
@@ -621,7 +621,7 @@ app.post("/api/submit-application", async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: "maxwalker23@gmail.com",
+      to: ["maxwalker23@gmail.com",
       // to: ["maxwalker23@gmail.com", "figlets.const@gmail.com"],
       subject: `New Application from ${
         applicationData.fullName
