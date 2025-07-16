@@ -621,7 +621,7 @@ app.post("/api/submit-application", async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: ["maxwalker23@gmail.com",
+      to: "maxwalker23@gmail.com",
       // to: ["maxwalker23@gmail.com", "figlets.const@gmail.com"],
       subject: `New Application from ${
         applicationData.fullName
