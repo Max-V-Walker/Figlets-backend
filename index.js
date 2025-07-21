@@ -10,7 +10,10 @@ const app = express();
 const PORT = process.env.PORT || 5050;
 
 app.use(
-  cors({ origin: "https://figlets-frontend.netlify.app", methods: ["POST"] })
+  cors({
+    // origin: "https://figlets-frontend.netlify.app", methods: ["POST"]
+    origin: ["https://www.figletsconstruction.com", "https://figletsconstruction.com"], methods: ["POST"]
+  })
 );
 app.use(express.json());
 app.use(express.json({ limit: "10mb" }));
@@ -621,8 +624,7 @@ app.post("/api/submit-application", async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: "maxwalker23@gmail.com",
-      // to: ["maxwalker23@gmail.com", "figlets.const@gmail.com"],
+      to: "figlets.const@gmail.com",
       subject: `New Application from ${
         applicationData.fullName
       } - ${new Date().toLocaleString()}`,
